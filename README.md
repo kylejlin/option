@@ -1,6 +1,7 @@
 # Option
 
 [![Build Status](https://travis-ci.com/kylejlin/option.svg?branch=master)](https://travis-ci.com/kylejlin/option)
+[![Coverage Status](https://coveralls.io/repos/github/kylejlin/option/badge.svg?branch=master)](https://coveralls.io/github/kylejlin/option?branch=master)
 [![npm version](https://badge.fury.io/js/%40kylejlin%2Foption.svg)](https://www.npmjs.com/package/@kylejlin/option)
 [![Downloads](https://img.shields.io/npm/dm/%40kylejlin%2Foption.svg)](https://www.npmjs.com/package/@kylejlin/option)
 
