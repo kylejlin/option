@@ -190,6 +190,13 @@ test("Option.prototype.unwrapOrElse() only calls the provided thunk if `this` is
   expect(thunk2.mock.calls.length).toBe(1);
 });
 
+test("Option.prototype.and()", () => {
+  expect(Option.some("foo").and(Option.some(42))).toEqual(Option.some(42));
+  expect(Option.some("foo").and(Option.none())).toBe(Option.none());
+  expect(Option.none().and(Option.some(42))).toBe(Option.none());
+  expect(Option.none().and(Option.none())).toBe(Option.none());
+});
+
 test("Option.prototype.andThen() only calls the provided flat mapper if `this` is some", () => {
   const firstChar = jest.fn(
     (s: string): Option<string> => {
@@ -203,4 +210,60 @@ test("Option.prototype.andThen() only calls the provided flat mapper if `this` i
   expect(firstChar.mock.calls).toEqual([["foo"]]);
   expect(Option.some("").andThen(firstChar)).toEqual(Option.none());
   expect(firstChar.mock.calls).toEqual([["foo"], [""]]);
+});
+
+test("Option.prototype.or()", () => {
+  expect(Option.some("foo").or(Option.some(42))).toEqual(Option.some("foo"));
+  expect(Option.some("foo").or(Option.none())).toEqual(Option.some("foo"));
+  expect(Option.none().or(Option.some(42))).toEqual(Option.some(42));
+  expect(Option.none().or(Option.none())).toBe(Option.none());
+});
+
+test("Option.prototype.orElse() only calls the provided callback if `this` is none", () => {
+  const getSome42 = jest.fn(() => Option.some(42));
+
+  expect(Option.some("foo").orElse(getSome42)).toEqual(Option.some("foo"));
+  expect(getSome42.mock.calls.length).toBe(0);
+
+  expect(Option.none().orElse(getSome42)).toEqual(Option.some(42));
+  expect(getSome42.mock.calls).toEqual([[]]);
+
+  const getNone = jest.fn(() => Option.none());
+
+  expect(Option.some("foo").orElse(getNone)).toEqual(Option.some("foo"));
+  expect(getNone.mock.calls.length).toBe(0);
+
+  expect(Option.none().orElse(getNone)).toBe(Option.none());
+  expect(getNone.mock.calls).toEqual([[]]);
+});
+
+test("Option.prototype.filter() only calls the provided predicate if `this` is some", () => {
+  const isEven = jest.fn(n => n % 2 === 0);
+
+  expect(Option.none().filter(isEven)).toBe(Option.none());
+  expect(isEven.mock.calls.length).toBe(0);
+
+  expect(Option.some(1).filter(isEven)).toBe(Option.none());
+  expect(isEven.mock.calls).toEqual([[1]]);
+
+  expect(Option.some(2).filter(isEven)).toEqual(Option.some(2));
+  expect(isEven.mock.calls).toEqual([[1], [2]]);
+});
+
+test("Option.prototype.flatten()", () => {
+  expect(Option.some(Option.some("foo")).flatten()).toEqual(Option.some("foo"));
+  expect(Option.some(Option.none()).flatten()).toBe(Option.none());
+  expect(Option.none<Option<string>>().flatten()).toBe(Option.none());
+});
+
+test("Option.prototype.array()", () => {
+  expect(Option.none().array()).toEqual([]);
+  expect(Option.some("foo").array()).toEqual(["foo"]);
+});
+
+test("Option.prototype.xor()", () => {
+  expect(Option.some("foo").xor(Option.some(42))).toBe(Option.none());
+  expect(Option.some("foo").xor(Option.none())).toEqual(Option.some("foo"));
+  expect(Option.none().xor(Option.some(42))).toEqual(Option.some(42));
+  expect(Option.none().xor(Option.none())).toBe(Option.none());
 });

@@ -42,12 +42,13 @@ Hence, you may see some confusing error messages such as `Property 'some' does n
 export default class Option<T> {
   /**
    * Returns a `some` variant that wraps the provided value.
+   *
    * Corresponds to Rust's `Option::<T>::Some(T)`.
-   * @param value The value to be wrapped.
    */
   static some<T>(value: T): Option<T>;
   /**
    * Returns the `none` variant.
+   *
    * Corresponds to Rust's `Option::None`.
    */
   static none<T>(): Option<T>;
@@ -57,7 +58,7 @@ export default class Option<T> {
    * an array of promises into promised array.
    *
    * If every option is `some`, this method returns `Option.some(arr)`
-   * where `arr` is an array of the unwrapped options.
+   * where `arr` is an array of the unwrapped `Option`s.
    * Otherwise, this method returns `Option.none()`.
    *
    * @param options A tuple or array of options.
@@ -103,7 +104,8 @@ export default class Option<T> {
   /**
    * Accepts an object with two callbacks.
    * One will be called if `this` is `none`.
-   * The other will be called if `this` is `some`.
+   * The other will be called with the value
+   * that `this` wraps if `this` is `some`.
    *
    * Returns the return value of whichever callback
    * gets called.
@@ -116,13 +118,15 @@ export default class Option<T> {
   /**
    * Returns `Option.none()` if `this` is `none`,
    * and `Option.some(mapper(x))` where `x` is
-   * the value `this` wraps.
+   * the value that `this` wraps.
    *
    * @param mapper A function that will be called if `this` is `some`.
    */
   map<R>(mapper: (value: T) => R): Option<R>;
   /**
-   * Calls the provided callback if `this` is `some`.
+   * Calls the provided callback with the value that `this` wraps
+   * if `this` is `some`.
+   *
    * This method is the same as `Option.prototype.map()`
    * except that it discards the value returned by
    * the callback, unconditionally returning undefined.
@@ -137,34 +141,34 @@ export default class Option<T> {
    */
   ifNone(executor: () => void): void;
   /**
-   * Returns the wrapped value if `this` is `some`,
+   * Returns the value that `this` wraps if `this` is `some`,
    * otherwise throwing an `UnwrapError`.
    */
   unwrap(): T;
   /**
-   * Returns the wrapped value if `this` is `some`,
+   * Returns the value that `this` wraps if `this` is `some`,
    * otherwise throwing an `UnwrapError` with the provided message.
    *
    * @param message The message of the `UnwrapError` to throw if `this` is `none`.
    */
   expect(message: string): T;
   /**
-   * Returns the wrapped value if `this` is `some`,
+   * Returns the value that `this` wraps if `this` is `some`,
    * otherwise throwing the provided error.
    *
    * @param error The error to throw if `this` is `none`.
    */
   expect(error: Error): T;
   /**
-   * Returns the wrapped value if `this` is `some`,
-   * otherwise returning the provided default.
+   * Returns the value that `this` wraps if `this` is `some`,
+   * otherwise returns the provided default.
    *
    * @param defaultValue The value to return if `this` is `none`.
    */
   unwrapOr<D>(defaultValue: D): T | D;
   /**
-   * Returns the wrapped value if `this` is `some`,
-   * otherwise calling the provided thunk and returning its return value.
+   * Returns the value that `this` wraps if `this` is `some`,
+   * otherwise calls the provided thunk and returns its return value.
    *
    * The thunk is called lazily (i.e., if `this` is `some`, the thunk
    * will never be called because there is no need for a default value).
@@ -173,13 +177,64 @@ export default class Option<T> {
    */
   unwrapOrElse<D>(defaultValueThunk: () => D): T | D;
   /**
-   * Returns `Option.none()` if `this` is `none`,
-   * otherwise calling the provided callback with the wrapped value,
-   * returning its return value.
+   * Returns the provided option if `this` is `some`,
+   * otherwise returns `Option.none()`.
+   *
+   * @param other The `Option` to return if `this` is `some`.
+   */
+  and<U>(other: Option<U>): Option<U>;
+  /**
+   * If `this` is `some`, calls the provided callback with the value
+   * that `this` wraps and returns the callback's return value.
+   * Otherwise, returns `Option.none()`.
+   *
+   * The callback is called lazily (i.e., if `this` is `none`, the callback
+   * will never be called).
    *
    * @param flatMapper A function that returns an `Option` to return if `this` is `some`.
    */
   andThen<U>(flatMapper: (value: T) => Option<U>): Option<U>;
+  /**
+   * Returns `this` if `this` is `some`,
+   * otherwise returning the provided option.
+   *
+   * @param other The `Option` to return if `this` is `none`.
+   */
+  or<U>(other: Option<U>): Option<T | U>;
+  /**
+   * Returns `this` if `this` is `some`,
+   * otherwise calling the provided callback and returning its return value.
+   *
+   * @param otherThunk The callback to call if `this` is `none`.
+   */
+  orElse<U>(otherThunk: () => Option<U>): Option<T | U>;
+  /**
+   * Returns `Option.none()` if `this` is `none`,
+   * otherwise calls the provided predicate with the value
+   * that `this` wraps and returns `this` if the predicate returns true
+   * and `Option.none()` if the predicate returns false.
+   *
+   * @param predicate The callback that returns whether to keep the wrapped value.
+   */
+  filter(predicate: (value: T) => boolean): Option<T>;
+  /**
+   * Converts from `Option<Option<U>>` to `Option<U>`.
+   * Only removes one level of nesting.
+   */
+  flatten<U>(this: Option<Option<U>>): Option<U>;
+  /**
+   * Returns an empty array if `this` is `none`,
+   * otherwise returns a one-item array containing
+   * the value that `this` wraps.
+   *
+   * Similar to Rust's `Option::iter()`.
+   */
+  array(): T[];
+  /**
+   * Returns the `Option` that is `some` if exactly one of
+   * `[this, other]` is `some`, otherwise returns `Option.none()`.
+   */
+  xor<U>(other: Option<U>): Option<T | U>;
 }
 /**
  * An error that occurs when `unwrap()` or `expect()`
