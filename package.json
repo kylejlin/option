@@ -1,6 +1,6 @@
 {
   "name": "@kylejlin/option",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Inspired by Rust's Option.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kylejlin/option-ts.git"
+    "url": "git+https://github.com/kylejlin/option.git"
   },
   "keywords": [
     "typescript",
@@ -25,7 +25,7 @@
   ],
   "author": "Kyle Lin",
   "license": "MIT",
-  "homepage": "https://github.com/kylejlin/option-ts#readme",
+  "homepage": "https://github.com/kylejlin/option#readme",
   "devDependencies": {
     "@types/jest": "^24.0.22",
     "@types/node": "^12.12.7",
