@@ -1,9 +1,27 @@
-import OptionImpl from "./OptionImpl";
+import { Option } from ".";
 
-/**
- * A wrapper representing a value that may be missing.
- */
-export interface Option<T> {
+export default class OptionImpl<T> implements Option<T> {
+  /**
+   * Returns a `some` variant that wraps the provided value.
+   *
+   * Corresponds to Rust's `Option::<T>::Some(T)`.
+   */
+  static some<T>(value: T): OptionImpl<T> {
+    const some = Object.create(OptionImpl.prototype);
+    some.isNone_ = false;
+    some.value = value;
+    return some;
+  }
+
+  /**
+   * Returns the `none` variant.
+   *
+   * Corresponds to Rust's `Option::None`.
+   */
+  static none<T>(): OptionImpl<T> {
+    return NONE;
+  }
+
   /**
    * Accepts an object with two callbacks.
    * One will be called if `this` is `none`.
@@ -15,11 +33,21 @@ export interface Option<T> {
    *
    * @param matcher An object with callbacks for `none` and `some`.
    */
-  match<N, S>(matcher: { none: () => N; some: (value: T) => S }): N | S;
+  match<N, S>(matcher: { none: () => N; some: (value: T) => S }): N | S {
+    if (this.isNone()) {
+      return matcher.none();
+    } else {
+      return matcher.some((this as any).value);
+    }
+  }
 
-  isNone(): boolean;
+  isNone(): boolean {
+    return (this as any).isNone_;
+  }
 
-  isSome(): boolean;
+  isSome(): boolean {
+    return !this.isNone();
+  }
 
   /**
    * Returns `Option.none()` if `this` is `none`,
@@ -28,7 +56,12 @@ export interface Option<T> {
    *
    * @param mapper A function that will be called if `this` is `some`.
    */
-  map<R>(mapper: (value: T) => R): Option<R>;
+  map<R>(mapper: (value: T) => R): OptionImpl<R> {
+    return this.match({
+      none: () => (this as unknown) as OptionImpl<R>,
+      some: value => OptionImpl.some(mapper(value)),
+    });
+  }
 
   /**
    * Calls the provided callback with the value that `this` wraps
@@ -40,20 +73,28 @@ export interface Option<T> {
    *
    * @param executor A callback that will be called if `this` is `some`.
    */
-  ifSome(executor: (value: T) => void): void;
+  ifSome(executor: (value: T) => void): void {
+    this.map(executor);
+  }
 
   /**
    * Calls the provided callback if `this` is `none`.
    *
    * @param executor A callback that will be called if `this` is `none`.
    */
-  ifNone(executor: () => void): void;
+  ifNone(executor: () => void): void {
+    if (this.isNone()) {
+      executor();
+    }
+  }
 
   /**
    * Returns the value that `this` wraps if `this` is `some`,
    * otherwise throwing an `UnwrapError`.
    */
-  unwrap(): T;
+  unwrap(): T {
+    return this.expect("Tried to call unwrap() on option.none()");
+  }
 
   /**
    * Returns the value that `this` wraps if `this` is `some`,
@@ -70,7 +111,16 @@ export interface Option<T> {
    */
   expect(error: Error): T;
 
-  expect(message: string | Error): T;
+  expect(message: string | Error): T {
+    return this.match({
+      none: () => {
+        const error =
+          "string" === typeof message ? new UnwrapError(message) : message;
+        throw error;
+      },
+      some: value => value,
+    });
+  }
 
   /**
    * Returns the value that `this` wraps if `this` is `some`,
@@ -78,7 +128,12 @@ export interface Option<T> {
    *
    * @param defaultValue The value to return if `this` is `none`.
    */
-  unwrapOr<D>(defaultValue: D): T | D;
+  unwrapOr<D>(defaultValue: D): T | D {
+    return this.match({
+      none: () => defaultValue,
+      some: value => value,
+    });
+  }
 
   /**
    * Returns the value that `this` wraps if `this` is `some`,
@@ -89,7 +144,12 @@ export interface Option<T> {
    *
    * @param defaultValueThunk A callback that returns the value to return if `this` is `none`.
    */
-  unwrapOrElse<D>(defaultValueThunk: () => D): T | D;
+  unwrapOrElse<D>(defaultValueThunk: () => D): T | D {
+    return this.match({
+      none: () => defaultValueThunk(),
+      some: value => value,
+    });
+  }
 
   /**
    * Returns the provided option if `this` is `some`,
@@ -97,7 +157,12 @@ export interface Option<T> {
    *
    * @param other The `Option` to return if `this` is `some`.
    */
-  and<U>(other: Option<U>): Option<U>;
+  and<U>(other: OptionImpl<U>): OptionImpl<U> {
+    return this.match({
+      none: () => OptionImpl.none(),
+      some: () => other,
+    });
+  }
 
   /**
    * If `this` is `some`, calls the provided callback with the value
@@ -109,7 +174,12 @@ export interface Option<T> {
    *
    * @param flatMapper A function that returns an `Option` to return if `this` is `some`.
    */
-  andThen<U>(flatMapper: (value: T) => Option<U>): Option<U>;
+  andThen<U>(flatMapper: (value: T) => OptionImpl<U>): OptionImpl<U> {
+    return this.match({
+      none: () => OptionImpl.none(),
+      some: flatMapper,
+    });
+  }
 
   /**
    * Returns `this` if `this` is `some`,
@@ -117,7 +187,12 @@ export interface Option<T> {
    *
    * @param other The `Option` to return if `this` is `none`.
    */
-  or<U>(other: Option<U>): Option<T | U>;
+  or<U>(other: OptionImpl<U>): OptionImpl<T | U> {
+    return this.match({
+      none: () => other,
+      some: () => this,
+    });
+  }
 
   /**
    * Returns `this` if `this` is `some`,
@@ -125,7 +200,12 @@ export interface Option<T> {
    *
    * @param otherThunk The callback to call if `this` is `none`.
    */
-  orElse<U>(otherThunk: () => Option<U>): Option<T | U>;
+  orElse<U>(otherThunk: () => OptionImpl<U>): OptionImpl<T | U> {
+    return this.match({
+      none: otherThunk,
+      some: () => this,
+    });
+  }
 
   /**
    * Returns `Option.none()` if `this` is `none`,
@@ -135,13 +215,17 @@ export interface Option<T> {
    *
    * @param predicate The callback that returns whether to keep the wrapped value.
    */
-  filter(predicate: (value: T) => boolean): Option<T>;
+  filter(predicate: (value: T) => boolean): OptionImpl<T> {
+    return this.andThen(value => (predicate(value) ? this : OptionImpl.none()));
+  }
 
   /**
    * Converts from `Option<Option<U>>` to `Option<U>`.
    * Only removes one level of nesting.
    */
-  flatten<U>(this: Option<Option<U>>): Option<U>;
+  flatten<U>(this: OptionImpl<OptionImpl<U>>): OptionImpl<U> {
+    return this.andThen(innerOption => innerOption);
+  }
 
   /**
    * Returns an empty array if `this` is `none`,
@@ -150,109 +234,39 @@ export interface Option<T> {
    *
    * Similar to Rust's `Option::iter()`.
    */
-  array(): T[];
+  array(): T[] {
+    return this.match({ none: () => [], some: value => [value] });
+  }
 
   /**
    * Returns the `Option` that is `some` if exactly one of
    * `[this, other]` is `some`, otherwise returns `Option.none()`.
    */
-  xor<U>(other: Option<U>): Option<T | U>;
+  xor<U>(other: OptionImpl<U>): OptionImpl<T | U> {
+    return this.match({
+      none: () => other,
+      some: () =>
+        other.match({
+          none: () => this,
+          some: () => OptionImpl.none(),
+        }),
+    });
+  }
 }
 
-export const option = {
-  /**
-   * Returns a `some` variant that wraps the provided value.
-   *
-   * Corresponds to Rust's `Option::<T>::Some(T)`.
-   */
-  some<T>(value: T): Option<T> {
-    return OptionImpl.some(value);
-  },
-
-  /**
-   * Returns the `none` variant.
-   *
-   * Corresponds to Rust's `Option::None`.
-   */
-  none<T>(): Option<T> {
-    return OptionImpl.none();
-  },
-
-  /**
-   * Transposes an array of options into an optional array,
-   * analagous to how `Promise.all()` transposes
-   * an array of promises into promised array.
-   *
-   * If every option is `some`, this method returns `Option.some(arr)`
-   * where `arr` is an array of the unwrapped `Option`s.
-   * Otherwise, this method returns `Option.none()`.
-   *
-   * @param options A tuple or array of options.
-   */
-  all: optionDotAll,
-};
+const NONE = (() => {
+  const none = Object.create(OptionImpl.prototype);
+  none.isNone_ = true;
+  return none;
+})();
 
 /**
- * Transposes an array of options into an optional array,
- * analagous to how `Promise.all()` transposes
- * an array of promises into promised array.
- *
- * If every option is `some`, this method returns `Option.some(arr)`
- * where `arr` is an array of the unwrapped `Option`s.
- * Otherwise, this method returns `Option.none()`.
- *
- * @param options A tuple or array of options.
+ * An error that occurs when `unwrap()` or `expect()`
+ * is called on `Option.none()`.
  */
-export function optionDotAll<A>(options: [Option<A>]): Option<[A]>;
-export function optionDotAll<A, B>(
-  options: [Option<A>, Option<B>],
-): Option<[A, B]>;
-export function optionDotAll<A, B, C>(
-  options: [Option<A>, Option<B>, Option<C>],
-): Option<[A, B, C]>;
-export function optionDotAll<A, B, C, D>(
-  options: [Option<A>, Option<B>, Option<C>, Option<D>],
-): Option<[A, B, C, D]>;
-export function optionDotAll<A, B, C, D, E>(
-  options: [Option<A>, Option<B>, Option<C>, Option<D>, Option<E>],
-): Option<[A, B, C, D, E]>;
-export function optionDotAll<A, B, C, D, E, F>(
-  options: [Option<A>, Option<B>, Option<C>, Option<D>, Option<E>, Option<F>],
-): Option<[A, B, C, D, E, F]>;
-export function optionDotAll<A, B, C, D, E, F, G>(
-  options: [
-    Option<A>,
-    Option<B>,
-    Option<C>,
-    Option<D>,
-    Option<E>,
-    Option<F>,
-    Option<G>,
-  ],
-): Option<[A, B, C, D, E, F, G]>;
-export function optionDotAll<A, B, C, D, E, F, G, H>(
-  options: [
-    Option<A>,
-    Option<B>,
-    Option<C>,
-    Option<D>,
-    Option<E>,
-    Option<F>,
-    Option<G>,
-    Option<H>,
-  ],
-): Option<[A, B, C, D, E, F, G, H]>;
-export function optionDotAll<T>(options: Option<T>[]): Option<T[]>;
-
-export function optionDotAll<T>(options: Option<T>[]): Option<T[]> {
-  let values = [];
-  for (let i = 0; i < options.length; i++) {
-    const option = options[i];
-    if (option.isSome()) {
-      values.push((option as any).value);
-    } else {
-      return OptionImpl.none();
-    }
+class UnwrapError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "UnwrapError";
   }
-  return OptionImpl.some(values);
 }
