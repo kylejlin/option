@@ -7,6 +7,12 @@
 
 A [Rust-inspired](https://doc.rust-lang.org/std/option/enum.Option.html) `Option` type for TypeScript.
 
+## DEPRECATION NOTICE
+
+This package has been deprecated.
+
+Use [`rusty-ts`](https://www.npmjs.com/package/rusty-ts) instead.
+
 ## Usage
 
 ```bash
